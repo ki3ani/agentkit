@@ -1,0 +1,12 @@
+agent:
+  name: "tool-params-agent"  
+  model: "claude-3-sonnet"
+  tools:
+    - name: "calculator"
+      parameters:
+        expression: "2 + 2"
+    - name: "text_count"
+      parameters: {}
+  prompts:
+    system: "You are an assistant with access to calculation and text analysis tools."
+    task: "Help the user with calculations and text analysis."

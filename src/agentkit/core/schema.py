@@ -66,10 +66,35 @@ AGENT_CONFIG_SCHEMA = {
                     "description": "AI model to use for the agent"
                 },
                 "tools": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
+                    "oneOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Simple list of tool names"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "description": "Tool name"
+                                    },
+                                    "parameters": {
+                                        "type": "object",
+                                        "description": "Tool-specific parameters"
+                                    }
+                                },
+                                "required": ["name"],
+                                "additionalProperties": False
+                            },
+                            "description": "List of tools with optional parameters"
+                        }
+                    ],
                     "default": [],
                     "description": "List of tools available to the agent"
                 },
@@ -156,6 +181,9 @@ def load_and_validate_config(path: Union[str, Path]) -> Dict[str, Any]:
         # Set default values for optional fields
         if "tools" not in config_data["agent"]:
             config_data["agent"]["tools"] = []
+        
+        # Normalize tools configuration
+        config_data["agent"]["tools"] = normalize_tools_config(config_data["agent"]["tools"])
             
         return config_data
         
@@ -199,6 +227,9 @@ def validate_config_dict(config_data: Dict[str, Any]) -> Dict[str, Any]:
         # Set default values for optional fields
         if "tools" not in config_data["agent"]:
             config_data["agent"]["tools"] = []
+        
+        # Normalize tools configuration
+        config_data["agent"]["tools"] = normalize_tools_config(config_data["agent"]["tools"])
             
         return config_data
         
@@ -218,6 +249,39 @@ def get_available_models() -> list[str]:
         List of available model names
     """
     return AGENT_CONFIG_SCHEMA["properties"]["agent"]["properties"]["model"]["enum"]
+
+
+def normalize_tools_config(tools_config: list) -> list:
+    """Normalize tools configuration to standard format.
+    
+    Converts simple string tool names to objects with name and parameters.
+    
+    Args:
+        tools_config: Raw tools configuration from YAML
+        
+    Returns:
+        Normalized tools configuration
+    """
+    normalized = []
+    
+    for tool in tools_config:
+        if isinstance(tool, str):
+            # Convert simple string to object format
+            normalized.append({
+                "name": tool,
+                "parameters": {}
+            })
+        elif isinstance(tool, dict):
+            # Already in object format, ensure parameters exist
+            if "parameters" not in tool:
+                tool["parameters"] = {}
+            normalized.append(tool)
+        else:
+            # Invalid tool configuration
+            logger.warning(f"Invalid tool configuration: {tool}")
+            continue
+    
+    return normalized
 
 
 def create_example_config() -> Dict[str, Any]:
