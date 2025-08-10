@@ -256,34 +256,52 @@ class ClaudeProvider(ModelProvider):
         raise ModelError(f"Failed to generate response after {max_retries} attempts")
 
 
-def get_model_provider(model_name: str, config: Optional[Config] = None) -> ModelProvider:
+def get_model_provider(
+    model_name: str, 
+    provider: Optional[str] = None,
+    region: Optional[str] = None,
+    config: Optional[Config] = None
+) -> ModelProvider:
     """Factory function to create model providers.
     
     Args:
         model_name: Name of the model to use
+        provider: Provider name ('anthropic' or 'bedrock'). Auto-detected if not specified.
+        region: AWS region for Bedrock provider
         config: Optional configuration instance
         
     Returns:
         Configured model provider
         
     Raises:
-        ModelError: If model is unsupported
+        ModelError: If model or provider is unsupported
     """
-    # Currently only supporting Claude models
     claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
     
-    if model_name in claude_models:
+    if model_name not in claude_models:
+        available_models = ", ".join(claude_models)
+        raise ModelError(
+            f"Unsupported model: {model_name}. "
+            f"Available models: {available_models}"
+        )
+    
+    # Auto-detect provider if not specified
+    if provider is None:
+        # Default to anthropic for backwards compatibility
+        provider = "anthropic"
+    
+    provider = provider.lower()
+    
+    if provider == "anthropic":
         return ClaudeProvider(model_name, config)
-    
-    # Future: Add support for other providers here
-    # elif model_name in openai_models:
-    #     return OpenAIProvider(model_name, config)
-    
-    available_models = ", ".join(claude_models)
-    raise ModelError(
-        f"Unsupported model: {model_name}. "
-        f"Available models: {available_models}"
-    )
+    elif provider == "bedrock":
+        from ..models.bedrock_provider import BedrockProvider
+        return BedrockProvider(model_name, region, config)
+    else:
+        raise ModelError(
+            f"Unsupported provider: {provider}. "
+            f"Available providers: anthropic, bedrock"
+        )
 
 
 def get_supported_models() -> Dict[str, list[str]]:
@@ -292,6 +310,8 @@ def get_supported_models() -> Dict[str, list[str]]:
     Returns:
         Dictionary mapping provider names to lists of model names
     """
+    claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
     return {
-        "claude": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+        "anthropic": claude_models,
+        "bedrock": claude_models
     }
