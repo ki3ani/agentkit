@@ -1,0 +1,7 @@
+agent:
+  name: "tool-test-agent"
+  model: "claude-3-haiku"
+  tools: ["echo", "calculator"]
+  prompts:
+    system: "You are a helpful assistant that can use tools to help users."
+    task: "Use the available tools to help answer the user's questions."
