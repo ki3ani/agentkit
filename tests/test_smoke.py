@@ -66,7 +66,8 @@ class TestSmoke:
 
 
     def test_cli_run_command_placeholder(self):
-        """Test CLI run command with placeholder implementation."""
+        """Test CLI run command with mocked model provider."""
+        from unittest.mock import Mock, patch
         runner = CliRunner()
         
         # Create a temporary YAML file
@@ -83,15 +84,28 @@ agent:
             yaml_path = f.name
         
         try:
-            result = runner.invoke(app, [
-                "run", 
-                yaml_path, 
-                "--input", "test query",
-                "--format", "text"
-            ])
+            # Mock the model provider to return a test response
+            mock_provider = Mock()
+            mock_provider.generate.return_value = "Test response from mock model"
+            
+            with patch('agentkit.cli.get_model_provider', return_value=mock_provider):
+                result = runner.invoke(app, [
+                    "run", 
+                    yaml_path, 
+                    "--input", "test query",
+                    "--format", "text"
+                ])
+                
             assert result.exit_code == 0
-            assert "AgentKit MVP" in result.stdout
-            assert "test query" in result.stdout
+            assert "test-agent" in result.stdout
+            assert "Test response from mock model" in result.stdout
+            
+            # Verify the mock was called correctly
+            mock_provider.generate.assert_called_once()
+            call_args = mock_provider.generate.call_args
+            assert "You are a helpful assistant" in call_args[1]['system_prompt']
+            assert "test query" in call_args[1]['task_prompt']
+            
         finally:
             # Clean up temporary file
             os.unlink(yaml_path)

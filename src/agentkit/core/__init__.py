@@ -9,6 +9,13 @@ from .schema import (
     get_available_models,
     create_example_config,
 )
+from .model_interface import (
+    ModelProvider,
+    ClaudeProvider,
+    ModelError,
+    get_model_provider,
+    get_supported_models,
+)
 
 __all__ = [
     "Config",
@@ -18,4 +25,9 @@ __all__ = [
     "ConfigValidationError",
     "get_available_models",
     "create_example_config",
+    "ModelProvider",
+    "ClaudeProvider",
+    "ModelError",
+    "get_model_provider",
+    "get_supported_models",
 ]
