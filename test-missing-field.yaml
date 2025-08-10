@@ -1,0 +1,5 @@
+agent:
+  name: "test-agent-missing"
+  model: "claude-3-haiku"
+  # Missing required prompts field
+  tools: ["web_search"]

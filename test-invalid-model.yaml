@@ -1,0 +1,7 @@
+agent:
+  name: "test-agent-invalid"
+  model: "gpt-4"  # Invalid model name
+  tools: ["web_search"]
+  prompts:
+    system: "You are a helpful AI assistant."
+    task: "Help the user with their request."
