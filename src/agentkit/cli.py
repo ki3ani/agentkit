@@ -67,6 +67,8 @@ def run_agent(
     input_query: str = typer.Option(..., "--input", "-i", help="Input query for the agent"),
     output_format: str = typer.Option("text", "--format", "-f", help="Output format: text or json"),
     max_tokens: int = typer.Option(1024, "--max-tokens", help="Maximum tokens to generate"),
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="Override model provider (anthropic or bedrock)"),
+    region: Optional[str] = typer.Option(None, "--region", help="AWS region for bedrock provider"),
     tools: Optional[str] = typer.Option(None, "--tools", help="Override agent tools (comma-separated list)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
     debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
@@ -142,21 +144,32 @@ def run_agent(
             tools_context = tool_executor.get_tools_context()
             system_prompt += f"\n\n{tools_context}"
         
+        # Get provider and region from CLI or config
+        provider_name = provider or agent_config.get('provider', 'anthropic')
+        region_name = region or agent_config.get('region', 'us-east-1')
+        
         # Create model provider
         if verbose or debug:
-            logger.info(f"Creating model provider for {model_name}")
+            logger.info(f"Creating model provider for {model_name} using {provider_name}")
+            if provider_name == 'bedrock':
+                logger.info(f"Using AWS region: {region_name}")
             if tools_config:
                 tool_names = [t['name'] for t in tools_config]
                 logger.info(f"Available tools: {tool_names}")
         
-        model_provider = get_model_provider(model_name)
+        model_provider = get_model_provider(model_name, provider_name, region_name)
         
         # Display generation start info
         tool_names = [t['name'] for t in tools_config] if tools_config else ['None']
+        provider_info = f"{provider_name}"
+        if provider_name == 'bedrock':
+            provider_info += f" ({region_name})"
+            
         console.print(Panel.fit(
             f"[cyan]Generating response...[/cyan]\n\n"
             f"[yellow]Agent:[/yellow] {agent_config['name']}\n"
             f"[yellow]Model:[/yellow] {model_name}\n"
+            f"[yellow]Provider:[/yellow] {provider_info}\n"
             f"[yellow]Tools:[/yellow] {', '.join(tool_names)}\n"
             f"[yellow]Max Tokens:[/yellow] {max_tokens}",
             title="🤖 AgentKit - Processing",

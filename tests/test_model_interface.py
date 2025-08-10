@@ -227,22 +227,43 @@ class TestClaudeProvider:
 class TestModelFactory:
     """Test model factory functions."""
     
-    def test_get_model_provider_with_claude_models(self):
-        """Test factory creates Claude providers for supported models."""
+    def test_get_model_provider_with_claude_models_anthropic(self):
+        """Test factory creates Claude providers for supported models with Anthropic."""
         claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
         
         for model in claude_models:
             with patch('agentkit.core.model_interface.ClaudeProvider') as mock_provider:
-                get_model_provider(model)
+                get_model_provider(model, provider="anthropic")
                 mock_provider.assert_called_once_with(model, None)
+    
+    def test_get_model_provider_with_claude_models_bedrock(self):
+        """Test factory creates Bedrock providers for supported models."""
+        claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+        
+        for model in claude_models:
+            with patch('agentkit.models.bedrock_provider.BedrockProvider') as mock_provider:
+                get_model_provider(model, provider="bedrock", region="us-west-2")
+                mock_provider.assert_called_once_with(model, "us-west-2", None)
+    
+    def test_get_model_provider_default_provider(self):
+        """Test that default provider is Anthropic for backwards compatibility."""
+        with patch('agentkit.core.model_interface.ClaudeProvider') as mock_provider:
+            get_model_provider("claude-3-sonnet")
+            mock_provider.assert_called_once_with("claude-3-sonnet", None)
     
     def test_get_model_provider_with_config(self):
         """Test factory passes config to providers."""
         config = Config()
         
         with patch('agentkit.core.model_interface.ClaudeProvider') as mock_provider:
-            get_model_provider("claude-3-sonnet", config)
+            get_model_provider("claude-3-sonnet", provider="anthropic", config=config)
             mock_provider.assert_called_once_with("claude-3-sonnet", config)
+    
+    def test_get_model_provider_case_insensitive_provider(self):
+        """Test that provider names are case insensitive."""
+        with patch('agentkit.core.model_interface.ClaudeProvider') as mock_provider:
+            get_model_provider("claude-3-sonnet", provider="ANTHROPIC")
+            mock_provider.assert_called_once_with("claude-3-sonnet", None)
     
     def test_get_model_provider_with_unsupported_model(self):
         """Test factory raises error for unsupported models."""
@@ -251,16 +272,27 @@ class TestModelFactory:
         assert "Unsupported model" in str(exc_info.value)
         assert "claude-3" in str(exc_info.value)
     
+    def test_get_model_provider_with_unsupported_provider(self):
+        """Test factory raises error for unsupported providers."""
+        with pytest.raises(ModelError) as exc_info:
+            get_model_provider("claude-3-sonnet", provider="openai")
+        assert "Unsupported provider" in str(exc_info.value)
+        assert "openai" in str(exc_info.value)
+    
     def test_get_supported_models(self):
         """Test get_supported_models returns correct structure."""
         models = get_supported_models()
         
         assert isinstance(models, dict)
-        assert "claude" in models
-        assert isinstance(models["claude"], list)
-        assert "claude-3-opus" in models["claude"]
-        assert "claude-3-sonnet" in models["claude"]
-        assert "claude-3-haiku" in models["claude"]
+        assert "anthropic" in models
+        assert "bedrock" in models
+        assert isinstance(models["anthropic"], list)
+        assert isinstance(models["bedrock"], list)
+        
+        # Both providers should support the same Claude models
+        claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+        assert models["anthropic"] == claude_models
+        assert models["bedrock"] == claude_models
 
 
 class TestIntegrationScenarios:

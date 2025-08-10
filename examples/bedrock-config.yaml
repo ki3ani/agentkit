@@ -1,0 +1,9 @@
+agent:
+  name: "bedrock-claude-agent"
+  provider: "bedrock"
+  model: "claude-3-sonnet"
+  region: "us-east-1"
+  tools: ["echo", "calculator"]
+  prompts:
+    system: "You are a helpful assistant powered by AWS Bedrock. You have access to calculation and echo tools to help users."
+    task: "Help the user with their questions and tasks using available tools when appropriate."

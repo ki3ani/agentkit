@@ -65,6 +65,17 @@ AGENT_CONFIG_SCHEMA = {
                     ],
                     "description": "AI model to use for the agent"
                 },
+                "provider": {
+                    "type": "string",
+                    "enum": ["anthropic", "bedrock"],
+                    "default": "anthropic",
+                    "description": "AI provider to use (anthropic or bedrock)"
+                },
+                "region": {
+                    "type": "string",
+                    "default": "us-east-1",
+                    "description": "AWS region for bedrock provider"
+                },
                 "tools": {
                     "oneOf": [
                         {
@@ -182,6 +193,12 @@ def load_and_validate_config(path: Union[str, Path]) -> Dict[str, Any]:
         if "tools" not in config_data["agent"]:
             config_data["agent"]["tools"] = []
         
+        if "provider" not in config_data["agent"]:
+            config_data["agent"]["provider"] = "anthropic"
+            
+        if "region" not in config_data["agent"]:
+            config_data["agent"]["region"] = "us-east-1"
+        
         # Normalize tools configuration
         config_data["agent"]["tools"] = normalize_tools_config(config_data["agent"]["tools"])
             
@@ -227,6 +244,12 @@ def validate_config_dict(config_data: Dict[str, Any]) -> Dict[str, Any]:
         # Set default values for optional fields
         if "tools" not in config_data["agent"]:
             config_data["agent"]["tools"] = []
+        
+        if "provider" not in config_data["agent"]:
+            config_data["agent"]["provider"] = "anthropic"
+            
+        if "region" not in config_data["agent"]:
+            config_data["agent"]["region"] = "us-east-1"
         
         # Normalize tools configuration
         config_data["agent"]["tools"] = normalize_tools_config(config_data["agent"]["tools"])

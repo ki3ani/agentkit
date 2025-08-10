@@ -93,10 +93,25 @@ agent:
     author: "Your Name"
 ```
 
+### Model Providers
+
+AgentKit supports multiple providers for Claude models:
+
+**Anthropic API (Default)**
+- Direct access to Anthropic's Claude models
+- Requires `ANTHROPIC_API_KEY` environment variable
+
+**AWS Bedrock**
+- Access Claude models through AWS Bedrock
+- Uses AWS credentials and IAM permissions
+- Better for enterprise deployments
+
 ### Supported Models
 
+All providers support the same Claude models:
+
 - `claude-3-opus` - Most capable, best for complex tasks
-- `claude-3-sonnet` - Balanced performance and cost
+- `claude-3-sonnet` - Balanced performance and cost  
 - `claude-3-haiku` - Fastest, best for simple tasks
 
 ## 🔧 CLI Reference
@@ -113,6 +128,9 @@ agentkit run <config.yaml> --input "Your query"
 |--------|-------|-------------|---------|
 | `--input` | `-i` | Input query for the agent | Required |
 | `--format` | `-f` | Output format: `text` or `json` | `text` |
+| `--provider` | `-p` | Model provider: `anthropic` or `bedrock` | From config |
+| `--region` | | AWS region for bedrock provider | `us-east-1` |
+| `--tools` | | Override agent tools (comma-separated) | From config |
 | `--max-tokens` | | Maximum tokens to generate | `1024` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 | `--debug` | `-d` | Enable debug logging | `false` |
@@ -122,6 +140,15 @@ agentkit run <config.yaml> --input "Your query"
 ```bash
 # Basic usage
 agentkit run my-agent.yaml --input "Explain quantum computing"
+
+# Use AWS Bedrock provider
+agentkit run my-agent.yaml --provider bedrock --input "Hello world"
+
+# Bedrock with custom region
+agentkit run my-agent.yaml --provider bedrock --region eu-west-1 --input "Hello"
+
+# Override tools
+agentkit run my-agent.yaml --tools "echo,calculator" --input "Calculate 2+2"
 
 # JSON output for programmatic use
 agentkit run my-agent.yaml --input "Hello" --format json
@@ -153,16 +180,96 @@ MAX_TOKENS=1024
 TEMPERATURE=0.7
 ```
 
+### AWS Bedrock Setup
+
+AgentKit supports AWS Bedrock for enterprise deployments with better security and compliance.
+
+#### Prerequisites
+
+1. **AWS Account** with Bedrock access
+2. **Model Access** - Request access to Claude models in AWS Bedrock console
+3. **AWS Credentials** configured (CLI, IAM role, or environment variables)
+
+#### Installation with Bedrock Support
+
+```bash
+# Install with AWS dependencies
+poetry install --extras aws
+
+# Or with pip
+pip install agentkit[aws]
+```
+
+#### Authentication Methods
+
+**Method 1: AWS CLI Profile**
+```bash
+aws configure
+# Follow prompts to set up your credentials
+```
+
+**Method 2: Environment Variables**
+```env
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+```
+
+**Method 3: IAM Role (Lambda/EC2)**
+- No configuration needed - uses attached IAM role automatically
+
+#### Required IAM Permissions
+
+Your AWS credentials need these permissions:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "bedrock:InvokeModel",
+                "bedrock:ListFoundationModels"
+            ],
+            "Resource": [
+                "arn:aws:bedrock:*::foundation-model/anthropic.claude-*"
+            ]
+        }
+    ]
+}
+```
+
+#### Bedrock Configuration
+
+**YAML Configuration with Bedrock:**
+```yaml
+agent:
+  name: "bedrock-assistant" 
+  provider: "bedrock"          # Use AWS Bedrock
+  model: "claude-3-sonnet"
+  region: "us-east-1"          # AWS region
+  prompts:
+    system: "You are a helpful assistant."
+    task: "Help the user with their query."
+```
+
+**CLI Override:**
+```bash
+# Override provider via CLI
+agentkit run my-agent.yaml --provider bedrock --region us-west-2 --input "Hello"
+```
+
 ### AWS Lambda Deployment
 
 For AWS deployment, AgentKit supports multiple authentication methods:
 
-#### Method 1: Environment Variables
+#### Method 1: Environment Variables (Anthropic)
 ```env
 ANTHROPIC_API_KEY=your_api_key_here
 ```
 
-#### Method 2: AWS Secrets Manager
+#### Method 2: AWS Secrets Manager (Anthropic)
 ```env
 ANTHROPIC_SECRET_ARN=arn:aws:secretsmanager:us-east-1:123456789012:secret:anthropic-api-key
 ```
@@ -174,10 +281,15 @@ The secret should contain JSON with your API key:
 }
 ```
 
+#### Method 3: AWS Bedrock (Recommended)
+No API keys needed - uses IAM role permissions.
+
 #### AWS Infrastructure Setup
 
-1. **IAM Role**: Ensure your Lambda has permissions for Secrets Manager (if using)
-2. **Environment Variables**: Set `ANTHROPIC_SECRET_ARN` if using Secrets Manager
+1. **IAM Role**: Ensure your Lambda has appropriate permissions:
+   - For Bedrock: `bedrock:InvokeModel` permissions
+   - For Secrets Manager: `secretsmanager:GetSecretValue` permissions (if using)
+2. **Environment Variables**: Set region and any secret ARNs
 3. **Dependencies**: Include the built package with all dependencies
 4. **Timeout**: Set appropriate timeout for AI model calls (30s recommended)
 
