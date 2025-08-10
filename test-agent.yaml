@@ -1,0 +1,7 @@
+agent:
+  name: "test-agent"
+  model: "claude-3-sonnet"
+  tools: ["web_search", "file_write"]
+  prompts:
+    system: "You are a helpful assistant"
+    task: "Help the user with their request"

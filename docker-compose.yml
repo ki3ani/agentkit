@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  agentkit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: agentkit-main
+    environment:
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app/src
+    env_file:
+      - .env
+    volumes:
+      # Mount local configs and outputs for development
+      - ./configs:/app/configs:ro
+      - ./outputs:/app/outputs
+      # Mount source code for development (comment out for production)
+      - ./src:/app/src
+    ports:
+      - "8000:8000"
+    networks:
+      - agentkit-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: agentkit-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - agentkit-network
+    restart: unless-stopped
+
+  # PostgreSQL for agent state and execution history
+  postgres:
+    image: postgres:15-alpine
+    container_name: agentkit-postgres
+    environment:
+      - POSTGRES_DB=agentkit
+      - POSTGRES_USER=agentkit
+      - POSTGRES_PASSWORD=agentkit_dev_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - agentkit-network
+    restart: unless-stopped
+
+  # Development tools (optional)
+  dev-tools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: agentkit-dev
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app/src
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    networks:
+      - agentkit-network
+    profiles:
+      - dev
+    command: tail -f /dev/null  # Keep container running for development
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  agentkit-network:
+    driver: bridge
