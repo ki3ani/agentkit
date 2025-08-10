@@ -2,5 +2,20 @@
 
 from .config import Config
 from .logger import get_logger
+from .schema import (
+    load_and_validate_config,
+    validate_config_dict,
+    ConfigValidationError,
+    get_available_models,
+    create_example_config,
+)
 
-__all__ = ["Config", "get_logger"]
+__all__ = [
+    "Config",
+    "get_logger",
+    "load_and_validate_config",
+    "validate_config_dict", 
+    "ConfigValidationError",
+    "get_available_models",
+    "create_example_config",
+]

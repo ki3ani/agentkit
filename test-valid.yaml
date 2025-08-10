@@ -1,0 +1,10 @@
+agent:
+  name: "test-agent-valid"
+  model: "claude-3-sonnet"
+  tools: ["web_search", "file_write"]
+  prompts:
+    system: "You are a helpful AI assistant."
+    task: "Help the user with their request."
+  metadata:
+    version: "1.0"
+    description: "Test agent for validation"
