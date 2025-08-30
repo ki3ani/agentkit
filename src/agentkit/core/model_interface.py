@@ -260,31 +260,24 @@ def get_model_provider(
     model_name: str, 
     provider: Optional[str] = None,
     region: Optional[str] = None,
-    config: Optional[Config] = None
+    config: Optional[Config] = None,
+    **kwargs
 ) -> ModelProvider:
     """Factory function to create model providers.
     
     Args:
         model_name: Name of the model to use
-        provider: Provider name ('anthropic' or 'bedrock'). Auto-detected if not specified.
+        provider: Provider name ('anthropic', 'bedrock', or 'goose'). Auto-detected if not specified.
         region: AWS region for Bedrock provider
         config: Optional configuration instance
+        **kwargs: Additional provider-specific arguments
         
     Returns:
         Configured model provider
         
     Raises:
-        ModelError: If model or provider is unsupported
+        ModelError: If provider is unsupported
     """
-    claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
-    
-    if model_name not in claude_models:
-        available_models = ", ".join(claude_models)
-        raise ModelError(
-            f"Unsupported model: {model_name}. "
-            f"Available models: {available_models}"
-        )
-    
     # Auto-detect provider if not specified
     if provider is None:
         # Default to anthropic for backwards compatibility
@@ -293,14 +286,41 @@ def get_model_provider(
     provider = provider.lower()
     
     if provider == "anthropic":
+        # Validate Claude models for Anthropic provider
+        claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+        if model_name not in claude_models:
+            available_models = ", ".join(claude_models)
+            raise ModelError(
+                f"Unsupported Claude model: {model_name}. "
+                f"Available models: {available_models}"
+            )
         return ClaudeProvider(model_name, config)
+    
     elif provider == "bedrock":
+        # Validate Claude models for Bedrock provider
+        claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+        if model_name not in claude_models:
+            available_models = ", ".join(claude_models)
+            raise ModelError(
+                f"Unsupported Bedrock model: {model_name}. "
+                f"Available models: {available_models}"
+            )
         from ..models.bedrock_provider import BedrockProvider
         return BedrockProvider(model_name, region, config)
+    
+    elif provider == "goose":
+        # Goose is model agnostic - accept any model name
+        from ..models.goose_provider import GooseProvider
+        return GooseProvider(
+            model_name=model_name, 
+            config=config,
+            **kwargs
+        )
+    
     else:
         raise ModelError(
             f"Unsupported provider: {provider}. "
-            f"Available providers: anthropic, bedrock"
+            f"Available providers: anthropic, bedrock, goose"
         )
 
 
@@ -311,7 +331,16 @@ def get_supported_models() -> Dict[str, list[str]]:
         Dictionary mapping provider names to lists of model names
     """
     claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+    
+    # Import GooseProvider to get common models
+    try:
+        from ..models.goose_provider import GooseProvider
+        goose_common_models = list(GooseProvider.COMMON_MODELS.keys())
+    except ImportError:
+        goose_common_models = ["gpt-4", "gpt-4-turbo", "gpt-4o", "claude-3-opus", "claude-3-sonnet"]
+    
     return {
         "anthropic": claude_models,
-        "bedrock": claude_models
+        "bedrock": claude_models,
+        "goose": goose_common_models
     }

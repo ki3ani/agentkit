@@ -1,0 +1,8 @@
+agent:
+  name: "goose-gpt4-assistant"
+  provider: "goose"
+  model: "gpt-4o"
+  tools: ["calculator", "text_count"]
+  prompts:
+    system: "You are a helpful AI assistant powered by GPT-4 through Goose multi-model orchestration. You have access to calculation and text analysis tools."
+    task: "Help the user with their questions and tasks using available tools when appropriate."

@@ -58,18 +58,14 @@ AGENT_CONFIG_SCHEMA = {
                 },
                 "model": {
                     "type": "string",
-                    "enum": [
-                        "claude-3-opus",
-                        "claude-3-sonnet", 
-                        "claude-3-haiku"
-                    ],
-                    "description": "AI model to use for the agent"
+                    "minLength": 1,
+                    "description": "AI model to use for the agent (provider-specific)"
                 },
                 "provider": {
                     "type": "string",
-                    "enum": ["anthropic", "bedrock"],
+                    "enum": ["anthropic", "bedrock", "goose"],
                     "default": "anthropic",
-                    "description": "AI provider to use (anthropic or bedrock)"
+                    "description": "AI provider to use (anthropic, bedrock, or goose)"
                 },
                 "region": {
                     "type": "string",
@@ -201,6 +197,9 @@ def load_and_validate_config(path: Union[str, Path]) -> Dict[str, Any]:
         
         # Normalize tools configuration
         config_data["agent"]["tools"] = normalize_tools_config(config_data["agent"]["tools"])
+        
+        # Validate model compatibility with provider
+        _validate_model_provider_compatibility(config_data["agent"])
             
         return config_data
         
@@ -209,11 +208,7 @@ def load_and_validate_config(path: Union[str, Path]) -> Dict[str, Any]:
         error_path = " -> ".join([str(p) for p in e.absolute_path]) if e.absolute_path else "root"
         
         # Create user-friendly error messages
-        if "is not one of" in str(e.message):
-            # Model validation error
-            available_models = ", ".join(AGENT_CONFIG_SCHEMA["properties"]["agent"]["properties"]["model"]["enum"])
-            details = f"Available models: {available_models}"
-        elif "is a required property" in str(e.message):
+        if "is a required property" in str(e.message):
             # Missing required field
             details = f"Missing required field at: {error_path}"
         else:
@@ -253,6 +248,9 @@ def validate_config_dict(config_data: Dict[str, Any]) -> Dict[str, Any]:
         
         # Normalize tools configuration
         config_data["agent"]["tools"] = normalize_tools_config(config_data["agent"]["tools"])
+        
+        # Validate model compatibility with provider
+        _validate_model_provider_compatibility(config_data["agent"])
             
         return config_data
         
@@ -265,13 +263,67 @@ def validate_config_dict(config_data: Dict[str, Any]) -> Dict[str, Any]:
         )
 
 
-def get_available_models() -> list[str]:
-    """Get list of available AI models.
+def get_available_models() -> Dict[str, list[str]]:
+    """Get dictionary of available AI models by provider.
     
     Returns:
-        List of available model names
+        Dictionary mapping provider names to lists of model names
     """
-    return AGENT_CONFIG_SCHEMA["properties"]["agent"]["properties"]["model"]["enum"]
+    claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+    
+    # Import model interface to get comprehensive model list
+    try:
+        from .model_interface import get_supported_models
+        return get_supported_models()
+    except ImportError:
+        # Fallback if import fails
+        return {
+            "anthropic": claude_models,
+            "bedrock": claude_models,
+            "goose": ["gpt-4", "gpt-4-turbo", "gpt-4o", "claude-3-opus", "claude-3-sonnet"]
+        }
+
+
+def _validate_model_provider_compatibility(agent_config: Dict[str, Any]) -> None:
+    """Validate that the model is compatible with the specified provider.
+    
+    Args:
+        agent_config: Agent configuration dictionary
+        
+    Raises:
+        ConfigValidationError: If model is not compatible with provider
+    """
+    model = agent_config.get("model", "")
+    provider = agent_config.get("provider", "anthropic")
+    
+    # Define provider-specific model constraints
+    claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+    
+    if provider == "anthropic":
+        if model not in claude_models:
+            available = ", ".join(claude_models)
+            raise ConfigValidationError(
+                f"Model '{model}' is not supported by Anthropic provider",
+                f"Available Claude models: {available}"
+            )
+    
+    elif provider == "bedrock":
+        if model not in claude_models:
+            available = ", ".join(claude_models)
+            raise ConfigValidationError(
+                f"Model '{model}' is not supported by Bedrock provider",
+                f"Available Claude models: {available}"
+            )
+    
+    elif provider == "goose":
+        # Goose is model agnostic - accept any model
+        if not model or len(model.strip()) == 0:
+            raise ConfigValidationError(
+                "Model name cannot be empty for Goose provider",
+                "Specify any model name that Goose supports (e.g., gpt-4, claude-3-opus, etc.)"
+            )
+    
+    # Note: No validation for unknown providers - let the model interface handle that
 
 
 def normalize_tools_config(tools_config: list) -> list:

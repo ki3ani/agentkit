@@ -67,7 +67,8 @@ def run_agent(
     input_query: str = typer.Option(..., "--input", "-i", help="Input query for the agent"),
     output_format: str = typer.Option("text", "--format", "-f", help="Output format: text or json"),
     max_tokens: int = typer.Option(1024, "--max-tokens", help="Maximum tokens to generate"),
-    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="Override model provider (anthropic or bedrock)"),
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="Override model provider (anthropic, bedrock, or goose)"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Override model name"),
     region: Optional[str] = typer.Option(None, "--region", help="AWS region for bedrock provider"),
     tools: Optional[str] = typer.Option(None, "--tools", help="Override agent tools (comma-separated list)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
@@ -108,7 +109,6 @@ def run_agent(
     # Create model provider and generate response
     try:
         agent_config = config_data['agent']
-        model_name = agent_config['model']
         system_prompt = agent_config['prompts']['system']
         task_prompt = agent_config['prompts']['task'] + "\n\nUser query: " + input_query
         tools_config = agent_config.get('tools', [])
@@ -144,15 +144,26 @@ def run_agent(
             tools_context = tool_executor.get_tools_context()
             system_prompt += f"\n\n{tools_context}"
         
-        # Get provider and region from CLI or config
+        # Get provider, model, and region from CLI or config
         provider_name = provider or agent_config.get('provider', 'anthropic')
+        model_name = model or agent_config['model']  # CLI override or config value
         region_name = region or agent_config.get('region', 'us-east-1')
         
         # Create model provider
         if verbose or debug:
+            original_model = agent_config['model']
+            original_provider = agent_config.get('provider', 'anthropic')
+            
+            if model != original_model:
+                logger.info(f"Overriding model from '{original_model}' to '{model_name}'")
+            if provider != original_provider:
+                logger.info(f"Overriding provider from '{original_provider}' to '{provider_name}'")
+                
             logger.info(f"Creating model provider for {model_name} using {provider_name}")
             if provider_name == 'bedrock':
                 logger.info(f"Using AWS region: {region_name}")
+            elif provider_name == 'goose':
+                logger.info(f"Using Goose multi-model orchestration")
             if tools_config:
                 tool_names = [t['name'] for t in tools_config]
                 logger.info(f"Available tools: {tool_names}")
@@ -164,6 +175,8 @@ def run_agent(
         provider_info = f"{provider_name}"
         if provider_name == 'bedrock':
             provider_info += f" ({region_name})"
+        elif provider_name == 'goose':
+            provider_info += f" (multi-model)"
             
         console.print(Panel.fit(
             f"[cyan]Generating response...[/cyan]\n\n"
