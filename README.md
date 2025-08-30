@@ -95,24 +95,37 @@ agent:
 
 ### Model Providers
 
-AgentKit supports multiple providers for Claude models:
+AgentKit supports multiple providers for AI models:
 
 **Anthropic API (Default)**
 - Direct access to Anthropic's Claude models
 - Requires `ANTHROPIC_API_KEY` environment variable
+- Best for direct Claude API usage
 
 **AWS Bedrock**
 - Access Claude models through AWS Bedrock
 - Uses AWS credentials and IAM permissions
 - Better for enterprise deployments
 
+**Goose (Multi-Model Orchestration)**
+- Route requests to multiple LLM providers through a single interface
+- Model agnostic - supports GPT, Claude, Llama, and other models
+- Requires `GOOSE_API_KEY` environment variable
+- Perfect for multi-model applications and A/B testing
+
 ### Supported Models
 
-All providers support the same Claude models:
-
+**Anthropic & Bedrock Providers:**
 - `claude-3-opus` - Most capable, best for complex tasks
 - `claude-3-sonnet` - Balanced performance and cost  
 - `claude-3-haiku` - Fastest, best for simple tasks
+
+**Goose Provider (Model Agnostic):**
+- `gpt-4`, `gpt-4-turbo`, `gpt-4o`, `gpt-4o-mini` - OpenAI models
+- `claude-3-opus`, `claude-3-sonnet`, `claude-3-haiku` - Anthropic models
+- `gemini-pro` - Google models
+- `llama-2-70b`, `mixtral-8x7b` - Open source models
+- Any custom model supported by your Goose deployment
 
 ## 🔧 CLI Reference
 
@@ -128,7 +141,8 @@ agentkit run <config.yaml> --input "Your query"
 |--------|-------|-------------|---------|
 | `--input` | `-i` | Input query for the agent | Required |
 | `--format` | `-f` | Output format: `text` or `json` | `text` |
-| `--provider` | `-p` | Model provider: `anthropic` or `bedrock` | From config |
+| `--provider` | `-p` | Model provider: `anthropic`, `bedrock`, or `goose` | From config |
+| `--model` | `-m` | Override model name | From config |
 | `--region` | | AWS region for bedrock provider | `us-east-1` |
 | `--tools` | | Override agent tools (comma-separated) | From config |
 | `--max-tokens` | | Maximum tokens to generate | `1024` |
@@ -146,6 +160,13 @@ agentkit run my-agent.yaml --provider bedrock --input "Hello world"
 
 # Bedrock with custom region
 agentkit run my-agent.yaml --provider bedrock --region eu-west-1 --input "Hello"
+
+# Use Goose provider with GPT-4
+agentkit run my-agent.yaml --provider goose --model gpt-4 --input "Hello world"
+
+# Switch between models with Goose
+agentkit run my-agent.yaml --provider goose --model claude-3-opus --input "Complex reasoning task"
+agentkit run my-agent.yaml --provider goose --model gpt-4o-mini --input "Simple question"
 
 # Override tools
 agentkit run my-agent.yaml --tools "echo,calculator" --input "Calculate 2+2"
@@ -281,8 +302,80 @@ The secret should contain JSON with your API key:
 }
 ```
 
-#### Method 3: AWS Bedrock (Recommended)
+#### Method 3: AWS Bedrock (Recommended for Enterprise)
 No API keys needed - uses IAM role permissions.
+
+### Goose Multi-Model Setup
+
+AgentKit supports Goose for multi-model orchestration, allowing you to route requests to different LLM providers through a single interface.
+
+#### Prerequisites
+
+1. **Goose API Access** - Get API key from your Goose deployment
+2. **Model Access** - Ensure your Goose instance has access to desired models
+
+#### Authentication
+
+**Environment Variable:**
+```env
+GOOSE_API_KEY=your_goose_api_key_here
+GOOSE_BASE_URL=https://your-goose-instance.com/v1  # Optional, defaults to https://api.goose.ai/v1
+```
+
+#### Goose Configuration
+
+**YAML Configuration with Goose:**
+```yaml
+agent:
+  name: "multi-model-assistant"
+  provider: "goose"
+  model: "gpt-4o"  # Any model supported by your Goose instance
+  tools: ["calculator", "text_count"]
+  prompts:
+    system: "You are a helpful AI assistant with multi-model capabilities."
+    task: "Answer questions and solve tasks accurately using available tools."
+```
+
+**Advanced Multi-Model Examples:**
+```yaml
+# GPT-4 for complex reasoning
+agent:
+  name: "reasoning-agent"
+  provider: "goose"
+  model: "gpt-4-turbo"
+  prompts:
+    system: "You excel at complex reasoning and analysis."
+    task: "Provide detailed analysis and reasoning for user queries."
+---
+# Claude for creative writing
+agent:
+  name: "creative-agent"
+  provider: "goose"
+  model: "claude-3-opus"
+  prompts:
+    system: "You are a creative writing assistant."
+    task: "Help users with creative writing and storytelling."
+---
+# Llama for cost-effective tasks
+agent:
+  name: "efficient-agent"
+  provider: "goose"  
+  model: "llama-2-70b"
+  prompts:
+    system: "You provide helpful responses efficiently."
+    task: "Answer user questions concisely and accurately."
+```
+
+**CLI Model Switching:**
+```bash
+# A/B test different models for the same task
+agentkit run my-agent.yaml --provider goose --model gpt-4 --input "Explain quantum computing"
+agentkit run my-agent.yaml --provider goose --model claude-3-opus --input "Explain quantum computing"
+agentkit run my-agent.yaml --provider goose --model gemini-pro --input "Explain quantum computing"
+```
+
+#### Method 4: Goose Multi-Model (Recommended for Flexibility)
+Provides access to multiple model providers through a single interface.
 
 #### AWS Infrastructure Setup
 

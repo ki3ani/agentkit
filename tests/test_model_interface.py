@@ -245,6 +245,15 @@ class TestModelFactory:
                 get_model_provider(model, provider="bedrock", region="us-west-2")
                 mock_provider.assert_called_once_with(model, "us-west-2", None)
     
+    def test_get_model_provider_with_goose_models(self):
+        """Test factory creates Goose providers for any model (model agnostic)."""
+        test_models = ["gpt-4", "claude-3-opus", "custom-model", "llama-2-70b"]
+        
+        for model in test_models:
+            with patch('agentkit.models.goose_provider.GooseProvider') as mock_provider:
+                get_model_provider(model, provider="goose")
+                mock_provider.assert_called_once_with(model_name=model, config=None)
+    
     def test_get_model_provider_default_provider(self):
         """Test that default provider is Anthropic for backwards compatibility."""
         with patch('agentkit.core.model_interface.ClaudeProvider') as mock_provider:
@@ -269,7 +278,7 @@ class TestModelFactory:
         """Test factory raises error for unsupported models."""
         with pytest.raises(ModelError) as exc_info:
             get_model_provider("gpt-4")
-        assert "Unsupported model" in str(exc_info.value)
+        assert "Unsupported Claude model" in str(exc_info.value)
         assert "claude-3" in str(exc_info.value)
     
     def test_get_model_provider_with_unsupported_provider(self):
@@ -286,13 +295,20 @@ class TestModelFactory:
         assert isinstance(models, dict)
         assert "anthropic" in models
         assert "bedrock" in models
+        assert "goose" in models
         assert isinstance(models["anthropic"], list)
         assert isinstance(models["bedrock"], list)
+        assert isinstance(models["goose"], list)
         
-        # Both providers should support the same Claude models
+        # Anthropic and Bedrock should support the same Claude models
         claude_models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
         assert models["anthropic"] == claude_models
         assert models["bedrock"] == claude_models
+        
+        # Goose should support a variety of models
+        assert len(models["goose"]) > 0
+        assert "gpt-4" in models["goose"]
+        assert "claude-3-opus" in models["goose"]
 
 
 class TestIntegrationScenarios:

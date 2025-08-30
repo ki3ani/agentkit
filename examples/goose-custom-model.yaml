@@ -1,0 +1,8 @@
+agent:
+  name: "goose-custom-model"
+  provider: "goose"
+  model: "llama-3-instruct-70b"  # Custom model example
+  tools: ["text_count"]
+  prompts:
+    system: "You are an AI assistant using a custom Llama model through Goose orchestration. You're efficient and direct in your responses."
+    task: "Answer user queries efficiently and use text analysis tools when helpful."

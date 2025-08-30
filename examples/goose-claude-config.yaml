@@ -1,0 +1,8 @@
+agent:
+  name: "goose-claude-assistant" 
+  provider: "goose"
+  model: "claude-3-sonnet"
+  tools: ["echo", "calculator"]
+  prompts:
+    system: "You are a helpful AI assistant powered by Claude 3 Sonnet through Goose multi-model orchestration. You excel at reasoning and have access to various tools."
+    task: "Provide thoughtful responses and use tools when they can help solve the user's request."
